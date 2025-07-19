@@ -27,13 +27,14 @@ jobs:
         run: pyinstaller main.spec
 
       - name: Debug: show build output
+        shell: pwsh
         run: |
-          echo "=== dist folder ==="
-          dir dist
-          echo "=== build folder ==="
-          dir build
-          echo "=== current dir ==="
-          dir
+          Write-Host "=== dist folder ==="
+          Get-ChildItem dist
+          Write-Host "=== build folder ==="
+          Get-ChildItem build
+          Write-Host "=== current dir ==="
+          Get-ChildItem .
 
       - name: Upload EXE artifact (wildcard)
         uses: actions/upload-artifact@v4
