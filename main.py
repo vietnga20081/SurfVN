@@ -2,16 +2,19 @@ import sys
 import os
 import requests
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QFormLayout, QLabel, 
-                             QLineEdit, QPushButton, QMessageBox, QStatusBar, QFrame)
+                             QLineEdit, QPushButton, QMessageBox, QStatusBar)
 from PyQt6.QtCore import QUrl, Qt
 from PyQt6.QtGui import QIcon, QFont
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 # --- CẤU HÌNH ---
-APP_NAME = "SurfVN - Traffic Exchange"
-TOKEN_FILE = "session.dat"
-API_LOGIN_URL = "http://surfvn.click/api/login.php" # << THAY ĐỔI URL NÀY
-SURF_URL_TEMPLATE = "http://surfvn.click/surf.php?api_token={}" # << THAY ĐỔI URL NÀY
+# THAY ĐỔI CÁC URL NÀY CHO PHÙ HỢP VỚI WEBSITE CỦA BẠN
+API_LOGIN_URL = "http://localhost/traffic-exchange/api/login.php" 
+SURF_URL_TEMPLATE = "http://localhost/traffic-exchange/surf.php?api_token={}"
+
+# CÁC CÀI ĐẶT KHÁC
+APP_NAME = "TrafficSurf Surfer"
+TOKEN_FILE = "session.dat" # File để lưu token đăng nhập
 
 # --- STYLESHEET (QSS) CHO GIAO DIỆN HIỆN ĐẠI ---
 STYLESHEET = """
@@ -20,7 +23,7 @@ QWidget {
     font-size: 10pt;
 }
 
-/* Cửa sổ Đăng nhập */
+/* === CỬA SỔ ĐĂNG NHẬP === */
 #LoginWindow {
     background-color: #2c3e50; /* Nền xanh đậm */
 }
@@ -34,6 +37,7 @@ QWidget {
     border: 1px solid #2c3e50;
     border-radius: 5px;
     padding: 8px;
+    font-size: 11pt;
 }
 #LoginWindow QLineEdit:focus {
     border: 1px solid #3498db; /* Viền xanh khi focus */
@@ -45,6 +49,7 @@ QWidget {
     border-radius: 5px;
     padding: 10px;
     border: none;
+    font-size: 11pt;
 }
 #LoginWindow QPushButton:hover {
     background-color: #2980b9; /* Màu đậm hơn khi di chuột */
@@ -60,7 +65,7 @@ QWidget {
     padding-bottom: 10px;
 }
 
-/* Cửa sổ Lướt web */
+/* === CỬA SỔ LƯỚT WEB === */
 #SurfWindow {
     background-color: #222b35;
 }
@@ -72,13 +77,27 @@ QStatusBar {
 QStatusBar::item {
     border: none;
 }
+QMessageBox {
+    background-color: #34495e;
+}
+QMessageBox QLabel {
+    color: white;
+}
+QMessageBox QPushButton {
+    background-color: #3498db;
+    color: white;
+    border-radius: 3px;
+    padding: 5px 15px;
+    min-width: 60px;
+}
 """
 
 class SurfWindow(QWidget):
+    """Cửa sổ chính để lướt web."""
     def __init__(self, api_token):
         super().__init__()
         self.api_token = api_token
-        self.setObjectName("SurfWindow") # Đặt ID để áp dụng style
+        self.setObjectName("SurfWindow")
         self.init_ui()
 
     def init_ui(self):
@@ -89,14 +108,17 @@ class SurfWindow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
+        # Trình duyệt nhúng
         self.browser = QWebEngineView()
         layout.addWidget(self.browser)
 
+        # Thanh trạng thái
         self.status_bar = QStatusBar()
         self.status_label = QLabel("Đang tải trang lướt web...")
-        self.status_bar.addWidget(self.status_label, 1) # Tham số 1 để co giãn
+        self.status_bar.addWidget(self.status_label, 1)
         layout.addWidget(self.status_bar)
 
+        # Load trang surf với token
         surf_url = SURF_URL_TEMPLATE.format(self.api_token)
         self.browser.setUrl(QUrl(surf_url))
         self.browser.loadFinished.connect(self.on_load_finished)
@@ -116,18 +138,19 @@ class SurfWindow(QWidget):
             event.ignore()
 
 class LoginWindow(QWidget):
+    """Cửa sổ đăng nhập."""
     def __init__(self):
         super().__init__()
         self.surf_window = None
-        self.setObjectName("LoginWindow") # Đặt ID để áp dụng style
+        self.setObjectName("LoginWindow")
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle(f"Đăng nhập - {APP_NAME}")
-        self.setFixedSize(400, 250) # Kích thước cố định cho đẹp
+        self.setFixedSize(400, 250)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30) # Thêm padding
+        layout.setContentsMargins(30, 20, 30, 30)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setLayout(layout)
 
@@ -145,6 +168,7 @@ class LoginWindow(QWidget):
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Mật khẩu")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.returnPressed.connect(self.handle_login) # Cho phép nhấn Enter để đăng nhập
         form_layout.addRow(QLabel("Mật khẩu:"), self.password_input)
         
         layout.addLayout(form_layout)
@@ -155,26 +179,37 @@ class LoginWindow(QWidget):
         layout.addWidget(self.login_button)
 
     def handle_login(self):
-        # ... (logic xử lý đăng nhập giữ nguyên như trước) ...
         login_identifier = self.login_input.text().strip()
         password = self.password_input.text().strip()
+
         if not login_identifier or not password:
             QMessageBox.warning(self, "Thông tin trống", "Vui lòng nhập đầy đủ thông tin đăng nhập.")
             return
+
         self.login_button.setText("Đang đăng nhập...")
         self.login_button.setEnabled(False)
         QApplication.processEvents()
+
         try:
-            response = requests.post(API_LOGIN_URL, json={"login_identifier": login_identifier, "password": password}, timeout=15)
+            response = requests.post(
+                API_LOGIN_URL,
+                json={"login_identifier": login_identifier, "password": password},
+                timeout=15
+            )
             response.raise_for_status()
             data = response.json()
-            if data.get("success"):
-                self.save_token(data.get("api_token"))
-                self.open_surf_window(data.get("api_token"))
+
+            if data.get("success") and data.get("api_token"):
+                api_token = data["api_token"]
+                self.save_token(api_token)
+                self.open_surf_window(api_token)
             else:
-                QMessageBox.critical(self, "Đăng nhập thất bại", data.get("message", "Lỗi không xác định."))
+                QMessageBox.critical(self, "Đăng nhập thất bại", data.get("message", "Lỗi không xác định từ server."))
+        
+        except requests.exceptions.Timeout:
+            QMessageBox.critical(self, "Lỗi Mạng", "Kết nối tới máy chủ quá hạn. Vui lòng thử lại.")
         except requests.exceptions.RequestException as e:
-            QMessageBox.critical(self, "Lỗi Mạng", f"Không thể kết nối đến server.\nLỗi: {e}")
+            QMessageBox.critical(self, "Lỗi Mạng", f"Không thể kết nối đến server. Vui lòng kiểm tra lại Internet.\nLỗi: {e}")
         finally:
             self.login_button.setText("Đăng nhập")
             self.login_button.setEnabled(True)
@@ -184,7 +219,7 @@ class LoginWindow(QWidget):
             with open(TOKEN_FILE, "w") as f:
                 f.write(token)
         except IOError:
-            print(f"Warning: Could not save token to {TOKEN_FILE}")
+            print(f"Warning: Không thể lưu token vào {TOKEN_FILE}")
             
     def open_surf_window(self, api_token):
         self.surf_window = SurfWindow(api_token)
@@ -192,24 +227,32 @@ class LoginWindow(QWidget):
         self.close()
 
 def load_token():
-    # ... (hàm load token giữ nguyên) ...
+    """Tải token từ file session.dat nếu có."""
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as f:
-                return f.read().strip()
-        except IOError: return None
+                token = f.read().strip()
+                if token: return token
+        except IOError:
+            return None
     return None
 
-if __name__ == '__main__':
+def main():
+    """Hàm chính để khởi chạy ứng dụng."""
     app = QApplication(sys.argv)
-    app.setStyleSheet(STYLESHEET) # <-- ÁP DỤNG STYLESHEET CHO TOÀN BỘ ỨNG DỤNG
+    app.setStyleSheet(STYLESHEET)
     
     saved_token = load_token()
     
     if saved_token:
+        # Nếu có token đã lưu, mở thẳng cửa sổ lướt web
         main_window = SurfWindow(saved_token)
     else:
+        # Nếu không, mở cửa sổ đăng nhập
         main_window = LoginWindow()
         
     main_window.show()
     sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()
