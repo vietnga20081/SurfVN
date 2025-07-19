@@ -9,8 +9,8 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 # --- CẤU HÌNH ---
 # THAY ĐỔI CÁC URL NÀY CHO PHÙ HỢP VỚI WEBSITE CỦA BẠN
-API_LOGIN_URL = "http://localhost/traffic-exchange/api/login.php" 
-SURF_URL_TEMPLATE = "http://localhost/traffic-exchange/surf.php?api_token={}"
+API_LOGIN_URL = "https://surfvn.click/api/login.php" 
+SURF_URL_TEMPLATE = "https://surfvn.click/surf.php?api_token={}"
 
 # CÁC CÀI ĐẶT KHÁC
 APP_NAME = "TrafficSurf Surfer"
