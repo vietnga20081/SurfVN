@@ -1,28 +1,34 @@
 name: Build Windows EXE
 
-# Chạy workflow này mỗi khi có code được đẩy lên nhánh `main`
 on:
   push:
     branches: [ "main" ]
-  # Cho phép chạy thủ công từ tab Actions trên GitHub
   workflow_dispatch:
+
+# ==========================================================
+# ============ BẮT ĐẦU PHẦN THÊM VÀO ĐỂ SỬA LỖI ============
+# ==========================================================
+permissions:
+  contents: write # Cấp quyền GHI cho nội dung của repo (bao gồm Releases, tags)
+# ==========================================================
+# ================= KẾT THÚC PHẦN THÊM VÀO ================
+# ==========================================================
 
 jobs:
   build-windows:
     runs-on: windows-latest
 
     steps:
-    # Bước 1: Lấy mã nguồn từ repository về máy ảo
+    # Bước 1: Checkout repository
     - name: Checkout repository
       uses: actions/checkout@v4
 
     # Bước 2: Cài đặt Python
-    # Sử dụng phiên bản Python ổn định như 3.10 hoặc 3.11
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        cache: 'pip' # Bật cache để tăng tốc độ cài đặt thư viện cho các lần chạy sau
+        cache: 'pip'
 
     # Bước 3: Cài đặt các thư viện cần thiết
     - name: Install dependencies
@@ -32,24 +38,19 @@ jobs:
         pip install pyinstaller
 
     # Bước 4: Build file .exe bằng PyInstaller
-    # Sử dụng các tùy chọn trực tiếp thay vì file .spec để dễ quản lý
     - name: Build EXE with PyInstaller
       run: |
         pyinstaller --onefile --windowed --name="TrafficSurf-Surfer" --icon="app_icon.ico" main.py
 
-    # Bước 5: Nâng cấp - Tạo Release và Tải file EXE lên đó
-    # Đây là cách chuyên nghiệp nhất để chia sẻ file với khách hàng
+    # Bước 5: Tạo Release và Tải file EXE lên đó
     - name: Create Release and Upload EXE
       uses: softprops/action-gh-release@v2
       with:
-        # Tên của Release, sử dụng ngày tháng và mã commit để nó là duy nhất
         tag_name: build-${{ github.run_number }}-${{ github.sha }}
         name: Build ${{ github.run_number }} (${{ github.ref_name }})
         body: |
           Build tự động từ commit: ${{ github.sha }}
           Tải file `TrafficSurf-Surfer.exe` bên dưới.
-        # Đánh dấu đây là bản pre-release (chưa chính thức)
         prerelease: true
-        # Các file cần tải lên. Sử dụng wildcard để lấy file exe trong thư mục dist
         files: |
           dist/TrafficSurf-Surfer.exe
