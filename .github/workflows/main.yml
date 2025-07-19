@@ -1,4 +1,4 @@
-name: Build PyQt6 EXE with icon
+name: Build PyQt6 App EXE
 
 on:
   push:
@@ -9,8 +9,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -26,8 +25,17 @@ jobs:
     - name: Build EXE from .spec
       run: pyinstaller main.spec
 
-    - name: Upload EXE artifact
+    - name: Debug: show build output
+      run: |
+        echo "=== dist folder ==="
+        dir dist
+        echo "=== build folder ==="
+        dir build
+        echo "=== current dir ==="
+        dir
+
+    - name: Upload EXE artifact (wildcard)
       uses: actions/upload-artifact@v4
       with:
         name: surfvn-exe
-        path: dist/surfvn.exe
+        path: dist/*.exe
