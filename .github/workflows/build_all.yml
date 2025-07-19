@@ -53,7 +53,7 @@ jobs:
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
       - name: Build macOS App
-        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-macOS" --icon="app_icon.icns" main.py
+        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-macOS" --icon="app_icon.ico" main.py
       # macOS app được tạo ra trong một thư mục .app, cần nén lại để tải lên
       - name: Zip the .app file
         run: zip -r dist/TrafficSurf-Surfer-macOS.zip dist/TrafficSurf-Surfer-macOS.app
