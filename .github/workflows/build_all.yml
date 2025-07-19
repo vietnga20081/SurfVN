@@ -13,14 +13,27 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11', cache: 'pip' }
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
       - name: Install dependencies
-        run: pip install -r requirements.txt && pip install pyinstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
       - name: Build Windows EXE
-        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-Windows" --icon="app_icon.ico" main.py
-      - uses: actions/upload-artifact@v4
+        # Vẫn giữ --onefile cho Windows vì nó hoạt động tốt
+        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-Windows" main.py
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
           name: windows-app
           path: dist/TrafficSurf-Surfer-Windows.exe
@@ -29,38 +42,62 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11', cache: 'pip' }
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
       - name: Install System Dependencies
         run: sudo apt-get update && sudo apt-get install -y libqt6webenginewidgets6 libgl1
+      
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
+
       - name: Build Linux Executable
+        # Vẫn giữ --onefile cho Linux
         run: pyinstaller --onefile --name="TrafficSurf-Surfer-Linux" main.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
           name: linux-app
           path: dist/TrafficSurf-Surfer-Linux
 
-  # === JOB 3: BUILD CHO MACOS ===
+  # === JOB 3: BUILD CHO MACOS (ĐÃ SỬA LỖI) ===
   build-macos:
-    runs-on: macos-latest # Chạy trên máy ảo macOS
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11', cache: 'pip' }
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
+
       - name: Build macOS App
-        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-macOS" --icon="app_icon.ico" main.py
-      # macOS app được tạo ra trong một thư mục .app, cần nén lại để tải lên
-      - name: Zip the .app file
+        # SỬA LỖI:
+        # 1. Xóa --onefile để chuyển sang chế độ onedir (khuyến nghị cho macOS)
+        # 2. Xóa --icon="app_icon.icns" để khắc phục lỗi FileNotFoundError
+        run: pyinstaller --windowed --name="TrafficSurf-Surfer-macOS" main.py
+      
+      - name: Zip the .app bundle
+        # Thư mục .app được tạo ra trong thư mục dist
         run: zip -r dist/TrafficSurf-Surfer-macOS.zip dist/TrafficSurf-Surfer-macOS.app
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: dist/TrafficSurf-Surfer-macOS.zip
+          path: dist/TrafficSurf-Surfer-macOS.zip # Tải lên file .zip
 
   # === JOB 4: TẠO RELEASE (CHẠY CUỐI CÙNG) ===
   create-release:
@@ -69,11 +106,16 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        # Không cần chỉ định path, nó sẽ tải tất cả vào thư mục hiện tại
+
       - name: Create Release and Upload Files
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }} (Win, Linux, macOS)
+          body: |
+            Build tự động từ commit: `${{ github.sha }}`
+            Tải về phiên bản phù hợp với hệ điều hành của bạn.
           prerelease: true
           files: |
             windows-app/TrafficSurf-Surfer-Windows.exe
