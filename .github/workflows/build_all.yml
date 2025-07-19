@@ -1,0 +1,81 @@
+name: Build Desktop Apps (Win, Linux, macOS)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # === JOB 1: BUILD CHO WINDOWS ===
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
+      - name: Install dependencies
+        run: pip install -r requirements.txt && pip install pyinstaller
+      - name: Build Windows EXE
+        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-Windows" --icon="app_icon.ico" main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: dist/TrafficSurf-Surfer-Windows.exe
+
+  # === JOB 2: BUILD CHO LINUX ===
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
+      - name: Install System Dependencies
+        run: sudo apt-get update && sudo apt-get install -y libqt6webenginewidgets6 libgl1
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt && pip install pyinstaller
+      - name: Build Linux Executable
+        run: pyinstaller --onefile --name="TrafficSurf-Surfer-Linux" main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-app
+          path: dist/TrafficSurf-Surfer-Linux
+
+  # === JOB 3: BUILD CHO MACOS ===
+  build-macos:
+    runs-on: macos-latest # Chạy trên máy ảo macOS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt && pip install pyinstaller
+      - name: Build macOS App
+        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-macOS" --icon="app_icon.icns" main.py
+      # macOS app được tạo ra trong một thư mục .app, cần nén lại để tải lên
+      - name: Zip the .app file
+        run: zip -r dist/TrafficSurf-Surfer-macOS.zip dist/TrafficSurf-Surfer-macOS.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: dist/TrafficSurf-Surfer-macOS.zip
+
+  # === JOB 4: TẠO RELEASE (CHẠY CUỐI CÙNG) ===
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos] # Phụ thuộc vào cả 3 job build
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Create Release and Upload Files
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }} (Win, Linux, macOS)
+          prerelease: true
+          files: |
+            windows-app/TrafficSurf-Surfer-Windows.exe
+            linux-app/TrafficSurf-Surfer-Linux
+            macos-app/TrafficSurf-Surfer-macOS.zip
