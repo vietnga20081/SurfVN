@@ -1,4 +1,4 @@
-name: Build EXE on push
+name: Build PyQt6 EXE with icon
 
 on:
   push:
@@ -9,7 +9,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -19,13 +20,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build EXE
-      run: pyinstaller --onefile main.py
+    - name: Build EXE from .spec
+      run: pyinstaller main.spec
 
-    - name: Upload EXE
-      uses: actions/upload-artifact@v4  # ✅ cập nhật phiên bản mới nhất
+    - name: Upload EXE artifact
+      uses: actions/upload-artifact@v4
       with:
-        name: main-exe
-        path: dist/main.exe
+        name: surfvn-exe
+        path: dist/surfvn.exe
