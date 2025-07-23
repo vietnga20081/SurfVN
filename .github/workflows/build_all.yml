@@ -1,10 +1,11 @@
-name: Build Desktop Apps (Win, Linux, macOS)
+name: Build and Release Desktop App
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Cấp quyền cho workflow để có thể ghi (tạo release) vào repository
 permissions:
   contents: write
 
@@ -29,14 +30,13 @@ jobs:
           pip install pyinstaller
 
       - name: Build Windows EXE
-        # Vẫn giữ --onefile cho Windows vì nó hoạt động tốt
-        run: pyinstaller --onefile --windowed --name="TrafficSurf-Surfer-Windows" main.py
+        run: pyinstaller --onefile --windowed --name="AnhBiaTool-Windows" main.py
       
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-app
-          path: dist/TrafficSurf-Surfer-Windows.exe
+          path: dist/AnhBiaTool-Windows.exe
 
   # === JOB 2: BUILD CHO LINUX ===
   build-linux:
@@ -51,23 +51,23 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install System Dependencies
-        run: sudo apt-get update && sudo apt-get install -y libqt6webenginewidgets6 libgl1
-      
+      - name: Install System Dependencies for PyQt6
+        # Cài đặt các thư viện Qt6 cần thiết cho Linux
+        run: sudo apt-get update && sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0
+
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
 
       - name: Build Linux Executable
-        # Vẫn giữ --onefile cho Linux
-        run: pyinstaller --onefile --name="TrafficSurf-Surfer-Linux" main.py
+        run: pyinstaller --onefile --name="AnhBiaTool-Linux" main.py
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-app
-          path: dist/TrafficSurf-Surfer-Linux
+          path: dist/AnhBiaTool-Linux
 
-  # === JOB 3: BUILD CHO MACOS (ĐÃ SỬA LỖI) ===
+  # === JOB 3: BUILD CHO MACOS ===
   build-macos:
     runs-on: macos-latest
     steps:
@@ -84,40 +84,41 @@ jobs:
         run: pip install -r requirements.txt && pip install pyinstaller
 
       - name: Build macOS App
-        # SỬA LỖI:
-        # 1. Xóa --onefile để chuyển sang chế độ onedir (khuyến nghị cho macOS)
-        # 2. Xóa --icon="app_icon.icns" để khắc phục lỗi FileNotFoundError
-        run: pyinstaller --windowed --name="TrafficSurf-Surfer-macOS" main.py
+        # Sử dụng chế độ onedir (không có --onefile) để đảm bảo ổn định trên macOS
+        run: pyinstaller --windowed --name="AnhBiaTool-macOS" main.py
       
       - name: Zip the .app bundle
         # Thư mục .app được tạo ra trong thư mục dist
-        run: zip -r dist/TrafficSurf-Surfer-macOS.zip dist/TrafficSurf-Surfer-macOS.app
+        run: zip -r dist/AnhBiaTool-macOS.zip dist/AnhBiaTool-macOS.app
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: dist/TrafficSurf-Surfer-macOS.zip # Tải lên file .zip
+          path: dist/AnhBiaTool-macOS.zip # Tải lên file .zip
 
-  # === JOB 4: TẠO RELEASE (CHẠY CUỐI CÙNG) ===
+  # === JOB 4: TẠO RELEASE (CHẠY SAU KHI CẢ 3 BẢN BUILD THÀNH CÔNG) ===
   create-release:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux, build-macos] # Phụ thuộc vào cả 3 job build
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-        # Không cần chỉ định path, nó sẽ tải tất cả vào thư mục hiện tại
+        # Tải tất cả các artifacts vào thư mục làm việc, mỗi artifact một thư mục con
 
       - name: Create Release and Upload Files
         uses: softprops/action-gh-release@v2
         with:
+          # Tạo một tag duy nhất cho mỗi lần chạy dựa trên số thứ tự build
           tag_name: build-${{ github.run_number }}
           name: Build ${{ github.run_number }} (Win, Linux, macOS)
           body: |
             Build tự động từ commit: `${{ github.sha }}`
-            Tải về phiên bản phù hợp với hệ điều hành của bạn.
+            Đây là phiên bản đang trong quá trình phát triển. Tải về file phù hợp với hệ điều hành của bạn.
+          # Đánh dấu đây là phiên bản chưa chính thức (pre-release)
           prerelease: true
+          # Đường dẫn đến các file cần tải lên, dựa trên tên artifact đã tạo
           files: |
-            windows-app/TrafficSurf-Surfer-Windows.exe
-            linux-app/TrafficSurf-Surfer-Linux
-            macos-app/TrafficSurf-Surfer-macOS.zip
+            windows-app/AnhBiaTool-Windows.exe
+            linux-app/AnhBiaTool-Linux
+            macos-app/AnhBiaTool-macOS.zip
