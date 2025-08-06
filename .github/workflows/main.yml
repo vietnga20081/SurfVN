@@ -5,7 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# Cấp quyền cho workflow để có thể tạo release trên repository
 permissions:
   contents: write
 
@@ -30,9 +29,15 @@ jobs:
           pip install pyinstaller
 
       - name: Build Windows Executable
-        # --windowed: Ẩn cửa sổ dòng lệnh (console) khi chạy
-        # --onefile: Đóng gói tất cả thành một file .exe duy nhất
-        run: pyinstaller --windowed --onefile --name="SurfVN-App-Windows" --icon="path/to/your/icon.ico" main.py
+        run: >
+          pyinstaller 
+          --windowed 
+          --onefile 
+          --name="SurfVN-App-Windows" 
+          --icon="assets/icon.ico"
+          --hidden-import="selenium.webdriver.common.service"
+          --hidden-import="selenium.webdriver.common.options"
+          main.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -53,7 +58,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install System Dependencies for PyQt6 & Headless Chrome
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libgl1-mesa-glx
@@ -64,7 +69,14 @@ jobs:
           pip install pyinstaller
 
       - name: Build Linux Executable
-        run: pyinstaller --onefile --name="SurfVN-App-Linux" --icon="path/to/your/icon.png" main.py
+        run: >
+          pyinstaller 
+          --onefile 
+          --name="SurfVN-App-Linux" 
+          --icon="assets/icon.png"
+          --hidden-import="selenium.webdriver.common.service"
+          --hidden-import="selenium.webdriver.common.options"
+          main.py
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
@@ -91,8 +103,14 @@ jobs:
           pip install pyinstaller
 
       - name: Build macOS App Bundle
-        # --windowed tạo ra một .app bundle, đây là cách chuẩn cho macOS
-        run: pyinstaller --windowed --name="SurfVN-App-macOS" --icon="path/to/your/icon.icns" main.py
+        run: >
+          pyinstaller 
+          --windowed 
+          --name="SurfVN-App-macOS" 
+          --icon="assets/icon.icns"
+          --hidden-import="selenium.webdriver.common.service"
+          --hidden-import="selenium.webdriver.common.options"
+          main.py
       
       - name: Create ZIP archive of the .app bundle
         run: zip -r dist/SurfVN-App-macOS.zip dist/SurfVN-App-macOS.app
@@ -103,36 +121,24 @@ jobs:
           name: macos-app
           path: dist/SurfVN-App-macOS.zip
 
-  # === JOB 4: TẠO RELEASE (CHẠY SAU KHI CẢ 3 BẢN BUILD THÀNH CÔNG) ===
+  # === JOB 4: TẠO RELEASE ===
   create-release:
     runs-on: ubuntu-latest
-    # Đảm bảo job này chỉ chạy sau khi cả 3 job build đã hoàn thành
     needs: [build-windows, build-linux, build-macos] 
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
-        # Tải tất cả artifacts xuống thư mục làm việc, mỗi artifact sẽ có một thư mục con riêng
 
       - name: Create Release and Upload Files
         uses: softprops/action-gh-release@v2
         with:
-          # Tạo tag duy nhất cho mỗi lần build, ví dụ: build-123
           tag_name: build-${{ github.run_number }}
           name: App Build #${{ github.run_number }}
           body: |
             Bản build tự động cho ứng dụng lướt web TrafficSurf.
-            
             Commit: `${{ github.sha }}`
-            
-            Tải về file phù hợp với hệ điều hành của bạn:
-            - **Windows:** `SurfVN-App-Windows.exe`
-            - **Linux:** `SurfVN-App-Linux` (có thể cần `chmod +x` để chạy)
-            - **macOS:** `SurfVN-App-macOS.zip` (giải nén và chạy file .app)
-          
-          # Đánh dấu đây là phiên bản pre-release (chưa chính thức)
+            Tải về file phù hợp với hệ điều hành của bạn.
           prerelease: true
-          
-          # Đường dẫn đến các file đã được build để tải lên
           files: |
             windows-app/SurfVN-App-Windows.exe
             linux-app/SurfVN-App-Linux
