@@ -9,104 +9,63 @@ permissions:
   contents: write
 
 jobs:
-  # === JOB 1: BUILD CHO WINDOWS ===
+  # === JOB 1: BUILD CHO WINDOWS (Không thay đổi) ===
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-
       - name: Build Windows EXE
-        # Giữ nguyên lệnh build gốc, chỉ đổi tên
         run: pyinstaller --onefile --windowed --name="SurfVN-App-Windows" main.py
-      
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-app
-          path: dist/SurfVN-App-Windows.exe
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-app, path: dist/SurfVN-App-Windows.exe }
 
-  # === JOB 2: BUILD CHO LINUX ===
+  # === JOB 2: BUILD CHO LINUX (Đã sửa lỗi) ===
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
       - name: Install System Dependencies for PyQt6 & Headless Chrome
-        # Đây là phần quan trọng cần thêm vào để hỗ trợ Selenium
-        run: sudo apt-get update && sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libgl1-mesa-glx
-
+        # SỬA LỖI: Thay thế libgl1-mesa-glx bằng libgl1
+        run: sudo apt-get update && sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libgl1
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
-
       - name: Build Linux Executable
-        # Giữ nguyên lệnh build gốc, chỉ đổi tên
         run: pyinstaller --onefile --name="SurfVN-App-Linux" main.py
+      - uses: actions/upload-artifact@v4
+        with: { name: linux-app, path: dist/SurfVN-App-Linux }
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-app
-          path: dist/SurfVN-App-Linux
-
-  # === JOB 3: BUILD CHO MACOS ===
+  # === JOB 3: BUILD CHO MACOS (Không thay đổi) ===
   build-macos:
     runs-on: macos-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11', cache: 'pip' }
       - name: Install Python Dependencies
         run: pip install -r requirements.txt && pip install pyinstaller
-
       - name: Build macOS App
-        # Giữ nguyên logic build gốc cho macOS, chỉ đổi tên
         run: pyinstaller --windowed --name="SurfVN-App-macOS" main.py
-      
       - name: Zip the .app bundle
         run: zip -r dist/SurfVN-App-macOS.zip dist/SurfVN-App-macOS.app
+      - uses: actions/upload-artifact@v4
+        with: { name: macos-app, path: dist/SurfVN-App-macOS.zip }
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-app
-          path: dist/SurfVN-App-macOS.zip
-
-  # === JOB 4: TẠO RELEASE (CHẠY SAU KHI CẢ 3 BẢN BUILD THÀNH CÔNG) ===
+  # === JOB 4: TẠO RELEASE (Không thay đổi) ===
   create-release:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux, build-macos]
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Create Release and Upload Files
-        uses: softprops/action-gh-release@v2
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: App Build #${{ github.run_number }}
